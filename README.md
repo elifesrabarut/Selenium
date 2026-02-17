@@ -29,7 +29,3 @@ Sadece E2E testi: `mvn clean test -Dtest=AddToCartE2ETest`
 Ana sayfa → arama (örn. laptop) → sonuçların gelmesi → marka filtresi (örn. HP) → ilk ürüne tıklama → ürün detay → sepete ekle → sepete git → sepette ürünün olması kontrolü.
 
 Çerez banner’ı varsa kabul ediliyor; sepete ekledikten sonra “Sepete Git” modal’ı varsa oradan, yoksa doğrudan `/sepetim` ile sepete gidiliyor.
-
-## Teslim zip’i
-
-Zip alırken `target/`, `__MACOSX/`, `.DS_Store` dahil etme. Örnek:
