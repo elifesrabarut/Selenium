@@ -2,7 +2,7 @@
 
 HepsiBurada’da arama → filtreleme → ürün seçimi → sepete ekleme akışını otomatik test eden proje.
 
-**Kullandıklarım:** Java 17, Selenium 4, TestNG, Maven, Page Object Model. Beklemeler explicit wait ile, `Thread.sleep` yok.
+**Kullandıklarım:** Java 17, Selenium 4, TestNG, Maven, Page Object Model. Beklemeler element hazır olana kadar explicit wait (WebDriverWait) ile yapılıyor; sabit süre beklemek yerine koşul sağlanınca devam edildiği için `Thread.sleep` kullanılmıyor (daha stabil ve gereksiz bekleme yok).
 
 **Gereksinimler:** Java 17+, Maven, Chrome (isteğe göre Firefox/Edge).
 
