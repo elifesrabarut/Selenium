@@ -1,5 +1,6 @@
 package com.hepsiburada.core;
 
+import com.hepsiburada.utils.Config;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
@@ -13,24 +14,38 @@ public class DriverFactory {
     private static final String FIREFOX = "firefox";
     private static final String EDGE = "edge";
 
+    private static final String[] CHROME_ARGS = {
+            "--disable-popup-blocking",
+            "--disable-notifications",
+            "--start-maximized",
+            "--disable-blink-features=AutomationControlled"
+    };
+    private static final String[] EDGE_ARGS = {
+            "--disable-popup-blocking",
+            "--disable-notifications"
+    };
+    private static final String[] FIREFOX_ARGS = {"--disable-notifications"};
+
     public static WebDriver createDriver() {
-        String browser = System.getProperty("browser", CHROME).toLowerCase();
+        String browser = Config.getBrowser().toLowerCase();
         WebDriver driver;
 
         switch (browser) {
             case FIREFOX:
-                driver = new FirefoxDriver(new FirefoxOptions());
+                FirefoxOptions fo = new FirefoxOptions();
+                for (String arg : FIREFOX_ARGS) fo.addArguments(arg);
+                driver = new FirefoxDriver(fo);
                 break;
             case EDGE:
-                driver = new EdgeDriver(new EdgeOptions());
+                EdgeOptions eo = new EdgeOptions();
+                for (String arg : EDGE_ARGS) eo.addArguments(arg);
+                driver = new EdgeDriver(eo);
                 break;
             case CHROME:
             default:
-                ChromeOptions options = new ChromeOptions();
-                options.addArguments("--disable-popup-blocking");
-                options.addArguments("--disable-notifications");
-                options.addArguments("--start-maximized");
-                driver = new ChromeDriver(options);
+                ChromeOptions co = new ChromeOptions();
+                for (String arg : CHROME_ARGS) co.addArguments(arg);
+                driver = new ChromeDriver(co);
                 break;
         }
 

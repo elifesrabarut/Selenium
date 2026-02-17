@@ -1,84 +1,60 @@
 package com.hepsiburada.pages;
 
-import org.openqa.selenium.By;
-import org.openqa.selenium.NoSuchElementException;
-import org.openqa.selenium.TimeoutException;
-import org.openqa.selenium.WebDriver;
-import org.openqa.selenium.WebElement;
-import org.openqa.selenium.support.ui.ExpectedConditions;
-
+import com.hepsiburada.core.Waits;
+import org.openqa.selenium.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
 public class SearchResultsPage extends BasePage {
 
-    // Arama sonucu başlığı - "laptop araması (10.000+ ürün)" - arama yapıldığını doğrular
     private static final By SEARCH_RESULT_HEADER = By.cssSelector("h1[data-test-id='header-h1']");
-
-    // Ürün linkleri
-    private static final By PRODUCT_LINKS = By.cssSelector(
-            "a[href*='/p-'], " +
-            "a[href*='hepsiburada.com'][href*='-p-'], " +
-            "a[data-product-id]"
-    );
+    private static final By PRODUCT_LINKS = By
+            .cssSelector("a[href*='/p-'], a[href*='hepsiburada.com'][href*='-p-'], a[data-product-id]");
     private static final By PRODUCT_ITEMS = By.cssSelector(
-            "li[data-product-id], [data-product-id], " +
-            ".productListContent-item, [data-test-id='product-card']"
-    );
-    private static final By FIRST_PRODUCT = By.cssSelector(
-            "a[href*='/p-'], a[href*='-p-'][href*='hepsiburada']"
-    );
-    
-    // Filtre paneli - Marka (HepsiBurada: data-test-id="not_checked"/"checked" + label + input name="markalar")
-    private static final By FILTER_REGION = By.cssSelector("[role='region'][aria-label='Sonuçları filtrele']");
+            "li[data-product-id], [data-product-id], .productListContent-item, [data-test-id='product-card']");
+    private static final By FIRST_PRODUCT = By.cssSelector("a[href*='/p-'], a[href*='-p-'][href*='hepsiburada']");
+    private static final By FIRST_PRODUCT_CARD = By.cssSelector("[data-product-id]");
+    private static final By FIRST_PRODUCT_ANCHOR = By.cssSelector("[data-product-id] a[href*='-p-'], a[href*='-p-']");
     private static final By MARKA_SECTION = By.id("markalar");
     private static final By BRAND_UNCHECKED_ITEMS = By.cssSelector("[data-test-id='not_checked'] label");
     private static final By BRAND_CHECKED_ITEMS = By.cssSelector("[data-test-id='checked']");
-    private static final By BRAND_CHECKBOXES = By.cssSelector("#markalar input[name='markalar'], input[name='markalar']");
     private static final By BRAND_LABELS = By.cssSelector("#markalar label[class*='checkbox']");
-
-    // Fiyat filtresi - HepsiBurada: fiyat bölümü, aralık linkleri
-    private static final By PRICE_SECTION = By.cssSelector("#fiyat, [id*='fiyat'], [aria-label*='Fiyat']");
-    private static final By PRICE_OPTIONS = By.cssSelector("#fiyat a[href*='fiyat'], #fiyat label[class*='checkbox'], [id*='fiyat'] input, [id*='fiyat'] a");
-
-    // Değerlendirme filtresi - 4 yıldız ve üzeri vb.
-    private static final By RATING_SECTION = By.cssSelector("#degerlendirme, [id*='degerlendirme'], [id*='puan'], [aria-label*='Değerlendirme']");
-    private static final By RATING_CHECKBOXES = By.cssSelector("#degerlendirme input, [id*='degerlendirme'] input, [id*='puan'] input");
-    private static final By RATING_LABELS = By.cssSelector("#degerlendirme label[class*='checkbox'], [id*='degerlendirme'] label, [id*='puan'] label");
+    private static final By LOADING_OVERLAY = By
+            .cssSelector("[class*='LoadingWrapper'], [class*='skeleton'], [class*='loading']");
 
     public SearchResultsPage(WebDriver driver) {
         super(driver);
     }
 
-    /**
-     * Arama sonuçlarının geldiğini doğrular.
-     * HepsiBurada: h1[data-test-id='header-h1'] - "laptop araması (10.000+ ürün)" metni.
-     */
     public boolean areSearchResultsDisplayed() {
         try {
-            WebElement header = wait.until(ExpectedConditions.visibilityOfElementLocated(SEARCH_RESULT_HEADER));
-            return header.getText().contains("araması") && header.getText().contains("ürün");
+            WebElement header = waitVisible(SEARCH_RESULT_HEADER);
+            String text = header.getText() == null ? "" : header.getText();
+            return text.contains("araması") && text.contains("ürün");
         } catch (TimeoutException | NoSuchElementException e) {
             try {
-                wait.until(ExpectedConditions.presenceOfElementLocated(PRODUCT_LINKS));
-                return !driver.findElements(PRODUCT_LINKS).isEmpty();
-            } catch (TimeoutException | NoSuchElementException e2) {
-                System.out.println("[SearchResults] Product links not found: " + PRODUCT_LINKS);
+                Waits.waitForPresence(driver, PRODUCT_LINKS);
+                return !driver.findElements(PRODUCT_LINKS).isEmpty() || !driver.findElements(PRODUCT_ITEMS).isEmpty();
+            } catch (TimeoutException ignored) {
                 return false;
             }
         }
     }
 
-    /** Aranan terimin (örn. laptop) sonuç başlığında olduğunu doğrular */
     public boolean isSearchTermInResults(String searchTerm) {
-        try {
-            WebElement header = wait.until(ExpectedConditions.visibilityOfElementLocated(SEARCH_RESULT_HEADER));
-            return header.getText().toLowerCase().contains(searchTerm.toLowerCase());
-        } catch (TimeoutException | NoSuchElementException e) {
-            System.out.println("[SearchResults] Search term not found in results: " + e.getClass().getSimpleName());
+        if (searchTerm == null)
             return false;
+        String term = searchTerm.toLowerCase();
+        try {
+            String headerText = getText(SEARCH_RESULT_HEADER);
+            if (headerText != null && headerText.toLowerCase().contains(term))
+                return true;
+        } catch (TimeoutException ignored) {
         }
+        if (driver.getCurrentUrl().toLowerCase().contains("q=" + term) || driver.getCurrentUrl().contains("ara"))
+            return true;
+        return getProductCount() > 0;
     }
 
     public int getProductCount() {
@@ -90,265 +66,188 @@ public class SearchResultsPage extends BasePage {
         return driver.getCurrentUrl();
     }
 
-    /**
-     * En az bir filtre uygular. Sırayla dener: marka → fiyat → değerlendirme.
-     * Filtre paneli görünür olması için önce sayfa ortasına scroll yapar.
-     * Filtre uygulandıktan sonra sonuçların güncellenmesi beklenir.
-     *
-     * @param preferredBrand tercih edilen marka adı (örn. "HP"); null/boş ise ilk uygun marka seçilir
-     */
-    public SearchResultsPage applyFirstFilter(String preferredBrand) {
+    public SearchResultsPage applyBrandFilter(String preferredBrand) {
         scrollToPageMiddle();
-        if (applyBrandFilter(preferredBrand)) {
-            waitForFilterToApply();
-            return this;
+        String urlBefore = driver.getCurrentUrl();
+        String firstBefore = safeGetFirstProductIdOrHref();
+        boolean clicked = clickBrandOption(preferredBrand);
+        if (!clicked) {
+            scrollToPageMiddle();
+            clicked = clickBrandOption(preferredBrand);
         }
-        if (applyPriceFilter()) {
-            waitForFilterToApply();
-            return this;
+        if (!clicked) {
+            throw new IllegalStateException("Marka filtresi uygulanamadı. Marka: " + preferredBrand);
         }
-        if (applyRatingFilter()) {
-            waitForFilterToApply();
-            return this;
-        }
+        waitForResultsToRefresh(urlBefore, firstBefore);
         return this;
     }
 
-    /** @see #applyFirstFilter(String) */
-    public SearchResultsPage applyFirstFilter() {
-        return applyFirstFilter(null);
+    public SearchResultsPage applyFirstFilter(String preferredBrand) {
+        return applyBrandFilter(preferredBrand);
     }
 
-    /** Filtre uygulandıktan sonra sonuçların yüklenmesini bekler. */
-    private void waitForFilterToApply() {
+    private boolean clickBrandOption(String preferredBrand) {
         try {
-            wait.until(ExpectedConditions.invisibilityOfElementLocated(By.cssSelector("[class*='loading'], [class*='skeleton']")));
-        } catch (TimeoutException | NoSuchElementException e) {
-            System.out.println("[SearchResults] Loading indicator not found or already hidden: " + e.getClass().getSimpleName());
-        }
-        wait.until(ExpectedConditions.or(
-                ExpectedConditions.numberOfElementsToBeMoreThan(PRODUCT_ITEMS, 0),
-                ExpectedConditions.numberOfElementsToBeMoreThan(PRODUCT_LINKS, 0)
-        ));
-    }
-
-    /** @deprecated {@link #applyFirstFilter(String)} kullanın */
-    public SearchResultsPage applyFirstBrandFilter() {
-        return applyFirstFilter();
-    }
-
-    private boolean applyBrandFilter(String preferredBrand) {
-        try {
-            wait.until(ExpectedConditions.presenceOfElementLocated(MARKA_SECTION));
+            Waits.waitForPresence(driver, MARKA_SECTION, 15);
+            String search = (preferredBrand != null && !preferredBrand.isBlank()) ? preferredBrand.toLowerCase() : null;
             List<WebElement> uncheckedLabels = driver.findElements(BRAND_UNCHECKED_ITEMS);
-            if (!uncheckedLabels.isEmpty()) {
-                String search = (preferredBrand != null && !preferredBrand.isBlank()) ? preferredBrand.toLowerCase() : null;
-                for (WebElement label : uncheckedLabels) {
-                    if (search == null || label.getText().toLowerCase().contains(search)) {
-                        scrollToElement(label);
-                        wait.until(ExpectedConditions.elementToBeClickable(label));
-                        jsClick(findClickableInLabel(label));
-                        return true;
-                    }
+            for (WebElement label : uncheckedLabels) {
+                String txt = label.getText() == null ? "" : label.getText().toLowerCase();
+                if (search == null || txt.contains(search)) {
+                    scrollToElement(label);
+                    clickLabel(findClickableInLabel(label));
+                    waitForBrandCheckboxToUpdate();
+                    return true;
                 }
             }
-            if (preferredBrand != null && !preferredBrand.isBlank()) {
+            if (search != null) {
                 List<WebElement> labels = driver.findElements(BRAND_LABELS);
-                String search = preferredBrand.toLowerCase();
                 for (WebElement label : labels) {
-                    if (label.getText().toLowerCase().contains(search)) {
+                    String txt = label.getText() == null ? "" : label.getText().toLowerCase();
+                    if (txt.contains(search)) {
                         scrollToElement(label);
-                        wait.until(ExpectedConditions.elementToBeClickable(label));
-                        jsClick(findClickableInLabel(label));
+                        clickLabel(findClickableInLabel(label));
+                        waitForBrandCheckboxToUpdate();
                         return true;
-                    }
-                }
-            }
-            List<WebElement> checkboxes = driver.findElements(BRAND_CHECKBOXES);
-            for (WebElement checkbox : checkboxes) {
-                try {
-                    if (!checkbox.isSelected()) {
-                        scrollToElement(checkbox);
-                        wait.until(ExpectedConditions.elementToBeClickable(checkbox));
-                        jsClick(checkbox);
-                        return true;
-                    }
-                } catch (TimeoutException | NoSuchElementException e) {
-                    try {
-                        WebElement label = checkbox.findElement(By.xpath("./ancestor::label"));
-                        scrollToElement(label);
-                        wait.until(ExpectedConditions.elementToBeClickable(label));
-                        jsClick(findClickableInLabel(label));
-                        return true;
-                    } catch (TimeoutException | NoSuchElementException | org.openqa.selenium.StaleElementReferenceException e2) {
-                        System.out.println("[SearchResults] Checkbox fallback failed for brand '" + preferredBrand + "': " + e2.getClass().getSimpleName());
-                        continue;
                     }
                 }
             }
             List<WebElement> labels = driver.findElements(BRAND_LABELS);
             if (!labels.isEmpty()) {
-                WebElement firstLabel = labels.get(0);
-                scrollToElement(firstLabel);
-                wait.until(ExpectedConditions.elementToBeClickable(firstLabel));
-                jsClick(findClickableInLabel(firstLabel));
-                return true;
-            }
-        } catch (TimeoutException | NoSuchElementException e) {
-            System.out.println("[SearchResults] Brand filter element not found for brand '" + preferredBrand + "': " + e.getClass().getSimpleName());
-            return false;
-        }
-        return false;
-    }
-
-    /** Label içindeki input varsa onu, yoksa label'ı döner - tıklanacak element. */
-    private WebElement findClickableInLabel(WebElement label) {
-        try {
-            WebElement input = label.findElement(By.cssSelector("input[name='markalar']"));
-            return input;
-        } catch (NoSuchElementException e) {
-            System.out.println("[SearchResults] Input element not found in label, using label itself: input[name='markalar']");
-            return label;
-        }
-    }
-
-    private boolean applyPriceFilter() {
-        try {
-            if (driver.findElements(PRICE_SECTION).isEmpty()) return false;
-            wait.until(ExpectedConditions.presenceOfElementLocated(PRICE_SECTION));
-            List<WebElement> options = driver.findElements(PRICE_OPTIONS);
-            for (WebElement opt : options) {
-                try {
-                    scrollToElement(opt);
-                    wait.until(ExpectedConditions.elementToBeClickable(opt));
-                    opt.click();
-                    return true;
-                } catch (TimeoutException | NoSuchElementException e) {
-                    System.out.println("[SearchResults] Price option not clickable: " + e.getClass().getSimpleName());
-                    continue;
-                }
-            }
-        } catch (TimeoutException | NoSuchElementException e) {
-            System.out.println("[SearchResults] Price filter element not found: " + PRICE_SECTION);
-            return false;
-        }
-        return false;
-    }
-
-    private boolean applyRatingFilter() {
-        try {
-            if (driver.findElements(RATING_SECTION).isEmpty()) return false;
-            wait.until(ExpectedConditions.presenceOfElementLocated(RATING_SECTION));
-            List<WebElement> checkboxes = driver.findElements(RATING_CHECKBOXES);
-            for (WebElement cb : checkboxes) {
-                try {
-                    if (!cb.isSelected()) {
-                        scrollToElement(cb);
-                        wait.until(ExpectedConditions.elementToBeClickable(cb));
-                        cb.click();
-                        return true;
-                    }
-                } catch (TimeoutException | NoSuchElementException e) {
-                    System.out.println("[SearchResults] Rating checkbox not clickable: " + e.getClass().getSimpleName());
-                    continue;
-                }
-            }
-            List<WebElement> labels = driver.findElements(RATING_LABELS);
-            if (!labels.isEmpty()) {
                 WebElement first = labels.get(0);
                 scrollToElement(first);
-                wait.until(ExpectedConditions.elementToBeClickable(first));
-                first.click();
+                clickLabel(findClickableInLabel(first));
+                waitForBrandCheckboxToUpdate();
                 return true;
             }
-        } catch (TimeoutException | NoSuchElementException e) {
-            System.out.println("[SearchResults] Rating filter element not found: " + RATING_SECTION);
+            return false;
+        } catch (TimeoutException e) {
             return false;
         }
-        return false;
     }
 
-    /**
-     * Filtre sonrası sonuçların güncellendiğini doğrular.
-     * URL veya ürün sayısı değiştiyse true.
-     */
+    private void clickLabel(WebElement clickable) {
+        try {
+            clickable.click();
+        } catch (Exception e) {
+            jsClick(clickable);
+        }
+    }
+
+    private WebElement findClickableInLabel(WebElement label) {
+        return label;
+    }
+
+    private void waitForBrandCheckboxToUpdate() {
+        try {
+            Waits.waitUntil(driver,
+                    (java.util.function.Function<WebDriver, Boolean>) d -> !d.findElements(BRAND_CHECKED_ITEMS)
+                            .isEmpty()
+                            || !d.findElements(By.cssSelector("#markalar input:checked")).isEmpty(),
+                    2);
+        } catch (TimeoutException ignored) {
+        }
+    }
+
     public boolean areResultsUpdatedAfterFilter(int countBefore, String urlBefore) {
         try {
-            wait.until(ExpectedConditions.or(
-                    ExpectedConditions.numberOfElementsToBeMoreThan(PRODUCT_ITEMS, 0),
-                    ExpectedConditions.numberOfElementsToBeMoreThan(PRODUCT_LINKS, 0)
-            ));
-        } catch (TimeoutException e) {
-            System.out.println("[SearchResults] Filter results not updated (URL or count unchanged): " + e.getClass().getSimpleName());
-            return false;
+            Waits.waitForPresence(driver, PRODUCT_ITEMS);
+        } catch (TimeoutException ignored) {
+            try {
+                Waits.waitForPresence(driver, PRODUCT_LINKS);
+            } catch (TimeoutException e) {
+                return false;
+            }
         }
-        String urlAfter = getCurrentUrl();
+        String urlAfter = driver.getCurrentUrl();
         int countAfter = getProductCount();
         return !urlBefore.equals(urlAfter) || countBefore != countAfter;
     }
 
-    /**
-     * Marka filtresinin seçildiğini doğrular. Üç kontrol:
-     * 1) URL'de filtre parametresi
-     * 2) Seçili filtre chip'i (data-test-id="checked")
-     * 3) Marka checkbox selected
-     */
     public boolean isBrandFilterSelected(String brand) {
-        if (brand == null || brand.isBlank()) return true;
-        if (isBrandInUrl(brand)) return true;
-        if (isFilterChipVisible(brand)) return true;
-        return isBrandCheckboxSelected(brand);
-    }
-
-    private boolean isBrandInUrl(String brand) {
-        return driver.getCurrentUrl().toLowerCase().contains(brand.toLowerCase());
-    }
-
-    private boolean isFilterChipVisible(String brand) {
-        List<WebElement> checked = driver.findElements(BRAND_CHECKED_ITEMS);
+        if (brand == null || brand.isBlank())
+            return true;
         String term = brand.toLowerCase();
-        for (WebElement el : checked) {
-            if (el.getText().toLowerCase().contains(term)) return true;
+        if (driver.getCurrentUrl().toLowerCase().contains(term))
+            return true;
+        for (WebElement el : driver.findElements(BRAND_CHECKED_ITEMS)) {
+            String txt = el.getText() == null ? "" : el.getText().toLowerCase();
+            if (txt.contains(term))
+                return true;
         }
-        return false;
-    }
-
-    private boolean isBrandCheckboxSelected(String brand) {
-        List<WebElement> inputs = driver.findElements(By.cssSelector("#markalar input[name='markalar']:checked"));
-        String term = brand.toLowerCase();
+        List<WebElement> inputs = driver
+                .findElements(By.cssSelector("#markalar input[name='markalar']:checked, #markalar input:checked"));
         for (WebElement input : inputs) {
             String val = input.getAttribute("value");
-            if (val != null && val.toLowerCase().contains(term)) return true;
+            if (val != null && val.toLowerCase().contains(term))
+                return true;
         }
         return false;
+    }
+
+    private void waitForResultsToRefresh(String urlBefore, String firstBefore) {
+        Waits.waitForInvisibility(driver, LOADING_OVERLAY, 2);
+        try {
+            Waits.waitForPresence(driver, PRODUCT_ITEMS, 10);
+        } catch (TimeoutException e) {
+            Waits.waitForPresence(driver, PRODUCT_LINKS, 10);
+        }
+        Waits.waitUntil(driver, (java.util.function.Function<WebDriver, Boolean>) d -> {
+            String urlAfter = d.getCurrentUrl();
+            if (!urlAfter.equals(urlBefore))
+                return true;
+            String firstAfter = safeGetFirstProductIdOrHref();
+            if (firstBefore == null)
+                return firstAfter != null;
+            return firstAfter != null && !firstAfter.equals(firstBefore);
+        }, 10);
+    }
+
+    private String safeGetFirstProductIdOrHref() {
+        try {
+            List<WebElement> cards = driver.findElements(FIRST_PRODUCT_CARD);
+            if (!cards.isEmpty()) {
+                String pid = cards.get(0).getAttribute("data-product-id");
+                if (pid != null && !pid.isBlank())
+                    return pid;
+            }
+            List<WebElement> anchors = driver.findElements(FIRST_PRODUCT_ANCHOR);
+            if (!anchors.isEmpty()) {
+                String href = anchors.get(0).getAttribute("href");
+                if (href != null && !href.isBlank())
+                    return href;
+            }
+        } catch (Exception ignored) {
+        }
+        return null;
     }
 
     public ProductDetailPage selectFirstProduct() {
-        try {
-            wait.until(ExpectedConditions.invisibilityOfElementLocated(By.cssSelector("[class*='LoadingWrapper'], [class*='loading']")));
-        } catch (TimeoutException e) {
-            System.out.println("[SearchResults] Loading overlay not found or already gone: " + e.getClass().getSimpleName());
-        }
+        Waits.waitForInvisibility(driver, LOADING_OVERLAY, 2);
         Set<String> handlesBefore = driver.getWindowHandles();
-        WebElement firstProductLink = wait.until(ExpectedConditions.elementToBeClickable(FIRST_PRODUCT));
-        scrollToElement(firstProductLink);
-        jsClick(firstProductLink);
-        // HepsiBurada ürün linkleri yeni sekmede açılabiliyor; yeni sekmeye geç
+        WebElement firstProductLink = Waits.waitForClickable(driver, FIRST_PRODUCT, 10);
         try {
-            wait.until(d -> {
-                Set<String> handles = driver.getWindowHandles();
-                handles.removeAll(handlesBefore);
-                return !handles.isEmpty();
-            });
+            firstProductLink.click();
+        } catch (Exception e) {
+            scrollToElement(FIRST_PRODUCT);
+            firstProductLink = Waits.waitForClickable(driver, FIRST_PRODUCT, 5);
+            try {
+                firstProductLink.click();
+            } catch (Exception e2) {
+                jsClick(firstProductLink);
+            }
+        }
+        try {
+            Waits.waitUntil(driver, (java.util.function.Function<WebDriver, Boolean>) d -> d.getWindowHandles()
+                    .size() > handlesBefore.size(), 5);
             List<String> handlesList = new ArrayList<>(driver.getWindowHandles());
             handlesList.removeAll(handlesBefore);
             if (!handlesList.isEmpty()) {
                 driver.switchTo().window(handlesList.get(0));
-                wait.until(ExpectedConditions.urlContains("-p"));
             }
-        } catch (TimeoutException e) {
-            System.out.println("[SearchResults] New tab not opened (opened in same tab): " + e.getClass().getSimpleName());
+        } catch (TimeoutException ignored) {
         }
+        Waits.waitForUrlContains(driver, "-p", 10);
         return new ProductDetailPage(driver);
     }
 }

@@ -3,7 +3,7 @@
 <suite name="HepsiBurada E2E Test Suite" verbose="1">
     <test name="Product Search and Add to Cart">
         <classes>
-            <class name="com.hepsiburada.tests.ProductSearchAddToCartTest"/>
+            <class name="com.hepsiburada.tests.AddToCartE2ETest"/>
         </classes>
     </test>
 </suite>
