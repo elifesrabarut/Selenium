@@ -1,0 +1,27 @@
+# Build
+target/
+*.class
+*.jar
+*.war
+*.ear
+
+# Logs
+*.log
+
+# IDE
+.idea/
+*.iml
+.vscode/
+.settings/
+.project
+.classpath
+
+# OS
+.DS_Store
+**/.DS_Store
+__MACOSX/
+**/__MACOSX/
+
+# Test reports (target/ covers but explicit for clarity)
+**/surefire-reports/
+**/test-output/

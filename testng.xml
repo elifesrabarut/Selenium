@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
+<suite name="HepsiBurada E2E Test Suite" verbose="1">
+    <test name="Product Search and Add to Cart">
+        <classes>
+            <class name="com.hepsiburada.tests.ProductSearchAddToCartTest"/>
+        </classes>
+    </test>
+</suite>
